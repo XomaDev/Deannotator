@@ -7,7 +7,7 @@ public class Parser {
   private static final String[] KNOWN_ANNOTATIONS = {
       "ActionElement", "ActivityElement", "CategoryElement", "DataElement", "GrantUriPermissionElement",
       "IntentFilterElement", "MetaDataElement", "package-info", "PathPermissionElement", "ProviderElement",
-      "ReceiverElement", "ServiceElement", "Asset", "DesignerComponent", "IsColor",
+      "ReceiverElement", "ServiceElement", "DesignerComponent", "IsColor",
       "PermissionConstraint", "PropertyCategory", "SimpleBroadcastReceiver",
       "SimpleObject", "SimplePropertyCopier", "UsesActivities", "UsesActivityMetadata",
       "UsesApplicationMetadata", "UsesAssets", "UsesBroadcastReceivers", "UsesContentProviders", "UsesLibraries",
@@ -32,11 +32,15 @@ public class Parser {
         char peek = reader.peekChar();
         if (peek == '/') {
           // single line comment
-          reader.readUntil(NEW_LINE_TERMINATOR);
+          result
+              .append('/')
+              .append(reader.readUntil(NEW_LINE_TERMINATOR));
           continue;
         }
         if (peek == '*') {
-          readBlockComment();
+          result
+              .append('/')
+              .append(readBlockComment());
           continue;
         }
       }
@@ -61,12 +65,16 @@ public class Parser {
       if (token.is(TokenType.CHAR) && token.match("@")) {
         String annotation = reader.readUntil(ANNOTATION_SYMBOL_TERMINATOR);
         if (isKnownAnnotation(annotation)) {
+          result.append("/* ")
+              .append("@")
+              .append(annotation);
           // skip this annotation
           if (reader.hasNext() && reader.peekChar() == '(') {
             // the annotation has some content :)
             // inside it, we'll need to skip read until then
-            skipAnnotation();
+            result.append(readAnnotation());
           }
+          result.append(" */");
           continue;
         }
         // leave it as it is!
@@ -87,29 +95,37 @@ public class Parser {
     return output;
   }
 
-  private void readBlockComment() {
+  private String readBlockComment() {
+    StringBuilder comment = new StringBuilder();
     while (reader.hasNext()) {
       char c = reader.nextChar();
+      comment.append(c);
       if (c == '*' && reader.hasNext() && reader.peekChar() == '/') {
         // end of block comment
-        reader.nextChar();
+        comment.append(reader.nextChar());
         break;
       }
     }
+    return comment.toString();
   }
 
-  private void skipAnnotation() {
+  private String readAnnotation() {
+    StringBuilder annotation = new StringBuilder();
+
     int openBrackets = 0; // all types of brackets
 
     while (reader.hasNext()) {
       char c = reader.nextChar();
+      annotation.append(c);
+
       if (c == '\"') {
         // this reads the text string
         char lastChar = '\"';
         while (reader.hasNext()) {
           char quoteChar = reader.nextChar();
+          annotation.append(quoteChar);
           if (lastChar == '\\' && quoteChar == '\"') {
-            reader.nextChar();
+            annotation.append(reader.nextChar());
           } else if (quoteChar == '\"') {
             // we need to end it here!
             break;
@@ -130,6 +146,7 @@ public class Parser {
         }
       }
     }
+    return annotation.toString();
   }
 
   private boolean isKnownAnnotation(String annotation) {
