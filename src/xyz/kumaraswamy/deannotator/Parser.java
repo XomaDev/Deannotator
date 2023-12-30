@@ -11,8 +11,8 @@ public class Parser {
       "PermissionConstraint", "PropertyCategory", "SimpleBroadcastReceiver",
       "SimpleObject", "SimplePropertyCopier", "UsesActivities", "UsesActivityMetadata",
       "UsesApplicationMetadata", "UsesAssets", "UsesBroadcastReceivers", "UsesContentProviders", "UsesLibraries",
-      "UsesNativeLibraries", "UsesPermissions", "UsesQueries", "UsesServices"
-      // excludes @SimpleFunction, @SimpleEvent, @DesignerProperty, @Options
+      "UsesNativeLibraries", "UsesPermissions", "UsesQueries", "UsesServices", "Asset", "SimpleFunction", "SimpleEvent",
+      "DesignerProperty", "Options", "SimpleProperty"
   };
 
   private final Reader reader;
@@ -64,15 +64,19 @@ public class Parser {
       // code block responsible for skipping annotations
       if (token.is(TokenType.CHAR) && token.match("@")) {
         String annotation = reader.readUntil(ANNOTATION_SYMBOL_TERMINATOR);
-        if (isUnsupportedAnnotation(annotation)) {
+        if (isKnownAnnotation(annotation)) {
           result.append("/* ")
               .append("@")
               .append(annotation);
-          // comment append this annotation
+          // skip this annotation
+          while (reader.hasNext() && Character.isWhitespace(reader.peekChar())) {
+            result.append(reader.nextChar());
+          }
           if (reader.hasNext() && reader.peekChar() == '(') {
             // the annotation has some content :)
             // inside it, we'll need to skip read until then
-            result.append(readAnnotation());
+            String annotationContent = readAnnotation();
+            result.append(annotationContent.replaceAll("/", "//"));
           }
           result.append(" */");
           continue;
@@ -118,9 +122,18 @@ public class Parser {
       char c = reader.nextChar();
       annotation.append(c);
 
-      if (c == '\"') {
+      if (c == '"') {
         // this reads the text string
-        readQuote(reader, annotation);
+        while (reader.hasNext()) {
+          char quoteChar = reader.nextChar();
+          annotation.append(quoteChar);
+          if (quoteChar == '\\' && reader.hasNext()) {
+            annotation.append(reader.nextChar());
+          } else if (quoteChar == '"') {
+            // we need to end it here!
+            break;
+          }
+        }
       } else if (
           c == '(' || c == '{' || c == '['
       ) {
@@ -138,22 +151,7 @@ public class Parser {
     return annotation.toString();
   }
 
-  private void readQuote(Reader reader, StringBuilder readTo) {
-    char lastChar = '\"';
-    while (reader.hasNext()) {
-      char quoteChar = reader.nextChar();
-      readTo.append(quoteChar);
-      if (lastChar == '\\' && quoteChar == '\"') {
-        readTo.append(reader.nextChar());
-      } else if (quoteChar == '\"') {
-        // we need to end it here!
-        break;
-      }
-      lastChar = quoteChar;
-    }
-  }
-
-  private boolean isUnsupportedAnnotation(String annotation) {
+  private boolean isKnownAnnotation(String annotation) {
     for (String knownAnnotation : KNOWN_ANNOTATIONS) {
       if (knownAnnotation.equals(annotation)) {
         return true;

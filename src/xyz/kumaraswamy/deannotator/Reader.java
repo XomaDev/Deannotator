@@ -3,9 +3,11 @@ package xyz.kumaraswamy.deannotator;
 public class Reader {
 
   private final CharIterator iterator;
+  private final String text;
 
   public Reader(String text) {
     iterator = new CharIterator(text.toCharArray());
+    this.text = text;
   }
 
   public Token readBlock(Terminator terminator) {
@@ -40,5 +42,10 @@ public class Reader {
 
   public boolean hasNext() {
     return iterator.hasNext();
+  }
+
+  @Override
+  public String toString() {
+    return "<itr>" + text + "</itr>";
   }
 }
