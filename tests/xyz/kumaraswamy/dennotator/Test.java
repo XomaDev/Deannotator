@@ -10,7 +10,7 @@ public class Test {
 
   private static final File TEST_DIR = new File(System.getProperty("user.dir"), "/test/");
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws Exception {
     File file = new File(TEST_DIR, "TestFile.java");
     String content = Files.readString(file.toPath());
 

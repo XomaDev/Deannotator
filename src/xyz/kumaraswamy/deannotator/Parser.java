@@ -64,11 +64,11 @@ public class Parser {
       // code block responsible for skipping annotations
       if (token.is(TokenType.CHAR) && token.match("@")) {
         String annotation = reader.readUntil(ANNOTATION_SYMBOL_TERMINATOR);
-        if (isKnownAnnotation(annotation)) {
+        if (isUnsupportedAnnotation(annotation)) {
           result.append("/* ")
               .append("@")
               .append(annotation);
-          // skip this annotation
+          // comment append this annotation
           if (reader.hasNext() && reader.peekChar() == '(') {
             // the annotation has some content :)
             // inside it, we'll need to skip read until then
@@ -120,18 +120,7 @@ public class Parser {
 
       if (c == '\"') {
         // this reads the text string
-        char lastChar = '\"';
-        while (reader.hasNext()) {
-          char quoteChar = reader.nextChar();
-          annotation.append(quoteChar);
-          if (lastChar == '\\' && quoteChar == '\"') {
-            annotation.append(reader.nextChar());
-          } else if (quoteChar == '\"') {
-            // we need to end it here!
-            break;
-          }
-          lastChar = quoteChar;
-        }
+        readQuote(reader, annotation);
       } else if (
           c == '(' || c == '{' || c == '['
       ) {
@@ -149,7 +138,22 @@ public class Parser {
     return annotation.toString();
   }
 
-  private boolean isKnownAnnotation(String annotation) {
+  private void readQuote(Reader reader, StringBuilder readTo) {
+    char lastChar = '\"';
+    while (reader.hasNext()) {
+      char quoteChar = reader.nextChar();
+      readTo.append(quoteChar);
+      if (lastChar == '\\' && quoteChar == '\"') {
+        readTo.append(reader.nextChar());
+      } else if (quoteChar == '\"') {
+        // we need to end it here!
+        break;
+      }
+      lastChar = quoteChar;
+    }
+  }
+
+  private boolean isUnsupportedAnnotation(String annotation) {
     for (String knownAnnotation : KNOWN_ANNOTATIONS) {
       if (knownAnnotation.equals(annotation)) {
         return true;
